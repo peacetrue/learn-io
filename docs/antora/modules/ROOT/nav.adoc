@@ -1,0 +1,4 @@
+* xref:index.adoc[]
+* xref:theory.adoc[]
+* xref:manual.adoc[]
+* xref:version.adoc[]

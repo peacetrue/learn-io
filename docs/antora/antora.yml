@@ -1,0 +1,11 @@
+name: learn-io
+title: 学习 IO
+version: master
+asciidoc:
+  attributes:
+    numbered: '@'
+    website: https://peacetrue.github.io
+    app-name: learn-io
+start_page: ROOT:index.adoc
+nav:
+  - modules/ROOT/nav.adoc
