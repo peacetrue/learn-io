@@ -43,7 +43,7 @@ class SocketTest {
         log.error("BindException", exception);
         exception = Assertions.assertThrows(BindException.class, () -> new ServerSocket().bind(new InetSocketAddress(port)), "Address already in use");
         log.error("BindException", exception);
-        Assertions.assertEquals(0, execPipe("netstat -nat | grep -E 'tcp.*LISTEN" + port + "'").waitFor());
+        Assertions.assertEquals(0, execPipe("netstat -nat | grep -E 'tcp.*" + port + "'").waitFor());
     }
 
     @Test
