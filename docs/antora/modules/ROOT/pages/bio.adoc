@@ -1,0 +1,9 @@
+= BIO
+
+== 前言
+
+.命令
+* lsof -p
+* netstat -natp
+* tcpdump
+

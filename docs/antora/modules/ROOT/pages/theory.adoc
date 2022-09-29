@@ -1,2 +1,41 @@
 = 理论
 
+网上资料比较多，yi简单概述一下。
+
+== IO 演化过程
+
+image::io-step-process.png[]
+
+== 磁盘 IO（Java）
+
+image::image-2022-09-27-07-12-48-698.png[]
+
+== 网络 IO
+
+=== IP 地址
+
+参考 https://www.bilibili.com/video/BV1D7411m7c7/?spm_id_from=333.880.my_history.page.click[IP地址的分类^]。
+
+IP 地址由 4 字节 32 位组成：
+
+image::image-2022-09-27-16-40-22-542.png[]
+
+image::image-2022-09-27-16-42-51-869.png[]
+
+image::image-2022-09-27-16-41-34-458.png[]
+
+* IP 地址：包括网络地址和主机地址
+* 网络地址：确定网段，相同网段中主机可以直接连通
+* 主机地址：标志网段中的主机
+* 子网掩码：区分 IP 地址中的网络地址
+* 网关：   连接多个网络，实现夸网络传输
+* 广播地址：
+
+计算 192.168.12.72 / 255.255.255.192 的上述地址。
+
+.参考：
+* https://www.ibm.com/docs/en/zvm/7.2?topic=guide-introducing-computer-networks-protocols[IBM 网络^]
+* https://www.bilibili.com/video/BV1G7411L72T/?spm_id_from=333.880.my_history.page.click&vd_source=4e7cc068e607e17c0dbce608436b3b2b[B 站 IPv6^]
+* https://stackoverflow.com/questions/36715664/using-ip-what-does-lower-up-mean[LOWER_UP 的含义^]
+* https://unix.stackexchange.com/questions/193845/how-to-determine-interface-running-state-without-ifconfig[RUNNING 的含义^]
+* https://en.wikipedia.org/wiki/Multicast[Multicast^]

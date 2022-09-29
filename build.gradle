@@ -1,7 +1,31 @@
+import org.springframework.boot.gradle.plugin.SpringBootPlugin
+
 plugins {
+    id "application"
+    id "org.springframework.boot" version "${springBootPluginVersion}"
     id "com.github.peacetrue.gradle.build-convention" version "${peaceGradleVersion}${tailSnapshot}"
 }
 
-group "com.github.peacetrue.learn.io"
+group "com.github.peacetrue.learn"
 version "${learnIoVersion}${tailSnapshot}"
 description "学习 IO"
+
+application {
+//    mainClassName = "com.github.peacetrue.learn.io.IOMain"
+    applicationDefaultJvmArgs = ["-Xms50M", "-Xmx50M"]
+}
+
+dependencies {
+    implementation platform(SpringBootPlugin.BOM_COORDINATES) //版本管理
+
+    implementation "org.springframework.boot:spring-boot-starter"
+    implementation "org.springframework.boot:spring-boot-starter-aop"
+    implementation "org.springframework.shell:spring-shell-starter:2.1.1"
+    implementation "org.apache.commons:commons-io"
+//    implementation "org.apache.commons:commons-lang3"
+    implementation "com.google.guava:guava"
+    implementation "com.github.peacetrue:peacetrue-common"
+    implementation "com.github.peacetrue.spring:peacetrue-spring-beans"
+    implementation "org.jooq:jool-java-8"
+    implementation "com.fasterxml.jackson.core:jackson-databind"
+}
