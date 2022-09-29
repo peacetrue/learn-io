@@ -5,6 +5,7 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.function.ThrowingSupplier;
 
 import java.io.File;
 
@@ -49,7 +50,7 @@ public class ProcessTest {
         processBuilder.inheritIO();
         processBuilder.command("sudo", "ls");
         Process process = processBuilder.start();
-        Assertions.assertNotEquals(0, process.waitFor(), "无法输入密码而失败");
+        Assertions.assertDoesNotThrow((ThrowingSupplier<Integer>) process::waitFor);
         // sudo: a terminal is required to read the password; either use the -S option to read from standard input or configure an askpass helper
         // sudo: a password is required
     }

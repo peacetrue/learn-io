@@ -21,3 +21,7 @@ build
 target
 # npm
 node_modules
+# custom
+temp.txt
+# vsc
+bin
