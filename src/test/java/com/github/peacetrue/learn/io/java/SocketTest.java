@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.OS;
 
 import javax.annotation.Nullable;
+import java.io.InputStream;
 import java.net.*;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
@@ -233,7 +234,7 @@ class SocketTest {
     void backlog() {
         Process process = tcpdump(20);
 
-        int backlog = 2, limit = OS.MAC.isCurrentOs() ? backlog : backlog + 1;
+        int backlog = 1, limit = OS.MAC.isCurrentOs() ? backlog : backlog + 1 + backlog;
         ServerSocket server = new ServerSocket(serverPort, backlog, InetAddress.getByName("127.0.0.1"));
         IntStream.range(0, limit).forEach(i -> Assertions.assertDoesNotThrow(() -> getBacklogClient(server)));
         netstat("clients.connected");
@@ -242,6 +243,7 @@ class SocketTest {
         // sysctl -w net.ipv4.tcp_syn_retries = 6
 
         Assertions.assertThrows(SocketTimeoutException.class, () -> getBacklogClient(server), "connect timed out");
+        netstat("clients.connected");
 
         server.accept();
         Assertions.assertDoesNotThrow(() -> getBacklogClient(server));
@@ -256,7 +258,7 @@ class SocketTest {
     @SneakyThrows
     private Socket getBacklogClient(ServerSocket server) {
         Socket client = new Socket();
-        client.bind(new InetSocketAddress("127.0.0.1", clientPort++));
+//        client.bind(new InetSocketAddress("127.0.0.1", clientPort++));
         client.connect(server.getLocalSocketAddress(), 1_000);
         return client;
     }
@@ -346,12 +348,12 @@ class SocketTest {
     }
 
     private Process tcpdump(int count) {
-        return tcpdump("tcpdump.listening:", count);
+        return tcpdump("tcpdump.listening", count);
     }
 
     @SneakyThrows
     private Process tcpdump(String title, int count) {
-        Process process = Runtime.getRuntime().exec("tcpdump -n -i " + lo + " -c " + count + " tcp and port " + serverPort);
+        Process process = Runtime.getRuntime().exec("tcpdump -nn -i " + lo + " -c " + count + " tcp and port " + serverPort);
         new Thread(Unchecked.runnable(() -> {
             Assertions.assertEquals(0, process.waitFor());
             log.info("{}\n{}", title, IOUtils.toString(process.getInputStream()));
