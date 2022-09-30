@@ -37,14 +37,17 @@ class SocketTest {
     private static String lo;
     /** 一个未被使用的随机端口，服务端会运行在此端口上 */
     private int serverPort = 10000;
+    private int clientPort;
+
+    public SocketTest() {
+        setClientPort();
+    }
 
     /**
      * 客户端端口 = 服务端端口 + 1。
-     *
-     * @return 客户端端口
      */
-    int getClientPort() {
-        return serverPort + 1;
+    void setClientPort() {
+        clientPort = serverPort + 1;
     }
 
     @BeforeAll
@@ -73,9 +76,14 @@ class SocketTest {
         Process process = Runtime.getRuntime().exec(sh("netstat -nat | grep -E 'tcp' | awk '{print $4}' | awk -F '[.:]' '{print $NF}'"));
         Assertions.assertEquals(0, process.waitFor());
         String portsString = IOUtils.toString(process.getInputStream());
-//        log.info("portsString:\n{}", portsString);
-        Set<Integer> ports = Arrays.stream(portsString.split("\n")).filter(NumberUtils::isNumber).map(Integer::parseInt).collect(Collectors.toSet());
-        while (ports.contains(serverPort) || ports.contains(getClientPort())) serverPort += 1;
+        log.debug("portsString:\n{}", portsString);
+        Set<Integer> ports = Arrays.stream(portsString.split("\n"))
+                .filter(NumberUtils::isNumber).map(Integer::parseInt)
+                .collect(Collectors.toSet());
+        while (ports.contains(serverPort) || ports.contains(clientPort)) {
+            serverPort += 1;
+            setClientPort();
+        }
         log.debug("port: {}", serverPort);
     }
 
@@ -93,7 +101,7 @@ class SocketTest {
         netstat("server.bind");
 
         Socket client = new Socket();
-        client.bind(new InetSocketAddress(InetAddress.getLoopbackAddress(), getClientPort()));
+        client.bind(new InetSocketAddress(InetAddress.getLoopbackAddress(), clientPort));
         netstat("client.bind");
         client.connect(server.getLocalSocketAddress());
         netstat("client.connect");
@@ -274,10 +282,11 @@ class SocketTest {
         server.accept().close();
         netstat("server.closed");
         Assertions.assertThrows(BindException.class, () -> getReuseAddressClient(server, false), "Address already in use");
-        // 等到客户端 TIME_WAIT 耗尽，可以获取到连接，此连接启用 SO_REUSEADDR
-        client = awaitAvailableReuseAddressClient(server);
-        netstat("client.connected");
 
+        // 之前的客户端被占用，使用一个新客户端
+        clientPort++;
+        client = getReuseAddressClient(server, true);
+        netstat("client.connected");
         // 从客户端关闭，客户端进入 TIME_WAIT
         client.close();
         netstat("client.closed");
@@ -296,6 +305,12 @@ class SocketTest {
         Assertions.assertThrows(SocketTimeoutException.class, () -> getReuseAddressClient(server, false), "Connect timed out");
     }
 
+    /**
+     * 等到客户端 TIME_WAIT 耗尽，可以获取到连接。
+     *
+     * @param server 服务端
+     * @return 客户端
+     */
     private Socket awaitAvailableReuseAddressClient(ServerSocket server) {
         return Awaitility.await().forever()
                 .pollInterval(1, TimeUnit.SECONDS)
@@ -316,7 +331,7 @@ class SocketTest {
     private Socket getReuseAddressClient(ServerSocket server, boolean reuseAddress) {
         Socket socket = new Socket();
         socket.setReuseAddress(reuseAddress);
-        socket.bind(new InetSocketAddress(InetAddress.getLocalHost(), getClientPort()));
+        socket.bind(new InetSocketAddress(InetAddress.getLocalHost(), clientPort));
         socket.connect(server.getLocalSocketAddress(), 1_000);
         return socket;
     }
