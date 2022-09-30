@@ -27,7 +27,9 @@ public class ProcessBuilderUtils {
      * @return sh 包装的命令
      */
     public static String[] sh(String... commands) {
-        return new String[]{"/bin/sh", "-c", String.join(" ", commands)};
+        String command = String.join(" ", commands);
+        log.debug("sh: {}", command);
+        return new String[]{"/bin/sh", "-c", command};
     }
 
     /**
