@@ -90,31 +90,31 @@ class SocketTest {
 
         ServerSocket server = new ServerSocket();
         server.bind(new InetSocketAddress(InetAddress.getLoopbackAddress(), serverPort));
-        netstat("server.bind:");
+        netstat("server.bind");
 
         Socket client = new Socket();
         client.bind(new InetSocketAddress(InetAddress.getLoopbackAddress(), getClientPort()));
-        netstat("client.bind:");
+        netstat("client.bind");
         client.connect(server.getLocalSocketAddress());
-        netstat("client.connect:");
+        netstat("client.connect");
 
         String request = "----";
         byte[] bytes = request.getBytes(StandardCharsets.UTF_8);
         client.getOutputStream().write(bytes);
-        netstat("client.write:");
+        netstat("client.write");
 
         Socket acceptSocket = server.accept();
         Assertions.assertNotEquals(-1, acceptSocket.getInputStream().read(bytes));
-        netstat("server.read:");
+        netstat("server.read");
         acceptSocket.getOutputStream().write(bytes);
-        netstat("server.write:");
+        netstat("server.write");
 
         Assertions.assertNotEquals(-1, client.getInputStream().read(bytes));
-        netstat("client.read:");
+        netstat("client.read");
         Assertions.assertEquals(request, new String(bytes));
 
         acceptSocket.close();
-        netstat("acceptSocket.close:");
+        netstat("acceptSocket.close");
         client.close();
 
         Awaitility.await().until(() -> {
@@ -199,10 +199,10 @@ class SocketTest {
     void backlog() {
         Process process = tcpdump(20);
 
-        int backlog = 2;
+        int backlog = 2, limit = OS.MAC.isCurrentOs() ? backlog : backlog + 1;
         ServerSocket server = new ServerSocket(serverPort, backlog);
-        IntStream.range(0, backlog).forEach(i -> Assertions.assertDoesNotThrow(() -> getBacklogClient(server)));
-        netstat("clients.connected:");
+        IntStream.range(0, limit).forEach(i -> Assertions.assertDoesNotThrow(() -> getBacklogClient(server)));
+        netstat("clients.connected");
 
         // sysctl net.ipv4.tcp_syn_retries
         // sysctl -w net.ipv4.tcp_syn_retries = 6
