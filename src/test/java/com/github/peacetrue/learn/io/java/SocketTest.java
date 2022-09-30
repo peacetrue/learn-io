@@ -11,12 +11,16 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.OS;
 
+import javax.annotation.Nullable;
 import java.net.*;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -69,9 +73,9 @@ class SocketTest {
         Process process = Runtime.getRuntime().exec(sh("netstat -nat | grep -E 'tcp' | awk '{print $4}' | awk -F '[.:]' '{print $NF}'"));
         Assertions.assertEquals(0, process.waitFor());
         String portsString = IOUtils.toString(process.getInputStream());
-//        log.debug("portsString:\n{}", portsString);
+//        log.info("portsString:\n{}", portsString);
         Set<Integer> ports = Arrays.stream(portsString.split("\n")).filter(NumberUtils::isNumber).map(Integer::parseInt).collect(Collectors.toSet());
-        while (ports.contains(serverPort)) serverPort += 10;
+        while (ports.contains(serverPort) || ports.contains(getClientPort())) serverPort += 1;
         log.debug("port: {}", serverPort);
     }
 
@@ -114,7 +118,7 @@ class SocketTest {
         client.close();
 
         Awaitility.await().until(() -> {
-            new Socket().connect(server.getLocalSocketAddress(), 1_000);
+            getBacklogClient(server);
             return !process.isAlive();
         });
     }
@@ -152,95 +156,154 @@ class SocketTest {
         thread.join();
     }
 
+    /** 测试不指定 host 和指定 host 的区别。 */
     @Test
     @SneakyThrows
     void host() {
-        Process process = Runtime.getRuntime().exec(sh("ifconfig | grep -E 'inet[^6]' | awk '{print $2}'"));
-        String ipsString = IOUtils.toString(process.getInputStream());
-        List<String> ips = Stream.of(ipsString.split("\n")).sorted().collect(Collectors.toList());
+        List<String> ips = ips();
         log.info("ips: {}", ips);
 
-        ServerSocket serverSocket = new ServerSocket();
-        serverSocket.bind(new InetSocketAddress(serverPort));
+        // 不指定 host 都能连
+        ServerSocket server = new ServerSocket();
+        server.bind(new InetSocketAddress(serverPort));
+        netstat("server.bind");
         ips.forEach(ip -> Assertions.assertDoesNotThrow(() -> new Socket(ip, serverPort)));
-        execPipe("netstat -nat | grep -E 'tcp.*" + serverPort + "'").waitFor();
-        serverSocket.close();
+        netstat("clients.connected");
+        server.close();
 
+        // 指定 host 为 localhost，只有 127.0.0.1 能连
         new ServerSocket().bind(new InetSocketAddress("localhost", serverPort));
-        IntStream.range(1, ips.size()).forEach(i -> Assertions.assertThrows(ConnectException.class, () -> new Socket(ips.get(i), serverPort)));
-        execPipe("netstat -nat | grep -E 'tcp.*" + serverPort + "'").waitFor();
+        netstat("server.bind");
+        IntStream.range(0, ips.size()).forEach(i -> {
+            String ip = ips.get(i);
+            log.info("ip: {}", ip);
+            if (i == 0) Assertions.assertDoesNotThrow(() -> new Socket(ip, serverPort));
+            else Assertions.assertThrows(ConnectException.class, () -> new Socket(ip, serverPort));
+        });
+        netstat("clients.connected");
+    }
+
+    @SneakyThrows
+    private List<String> ips() {
+        Process process = Runtime.getRuntime().exec(sh("ifconfig | grep -E 'inet[^6]' | awk '{print $2}'"));
+        Assertions.assertEquals(0, process.waitFor());
+        String ipsString = IOUtils.toString(process.getInputStream());
+        return Stream.of(ipsString.split("\n")).sorted()
+                .filter(ip -> ip.startsWith("127") || ip.startsWith("192.168"))
+                .collect(Collectors.toList());
     }
 
 
     @Test
     @SneakyThrows
     void backlog() {
+        Process process = tcpdump(20);
+
         int backlog = 2;
-        ServerSocket serverSocket = new ServerSocket(serverPort, backlog);
-        IntStream.range(0, backlog).boxed().forEach(i ->
-                Assertions.assertDoesNotThrow(() -> new Socket().connect(serverSocket.getLocalSocketAddress(), 1_000))
-        );
-        execPipe("netstat -nat | grep -E '" + serverPort + "'").waitFor();
+        ServerSocket server = new ServerSocket(serverPort, backlog);
+        IntStream.range(0, backlog).forEach(i -> Assertions.assertDoesNotThrow(() -> getBacklogClient(server)));
+        netstat("clients.connected:");
 
-        tcpdump(10);
-        // net.ipv4.tcp_syn_retries = 6
+        // sysctl net.ipv4.tcp_syn_retries
         // sysctl -w net.ipv4.tcp_syn_retries = 6
-        // sysctl net.ipv4.tcp_syncookies
-        // sysctl net.ipv4.tcp_syncookies=1
-//        execPipe(sudoPipe("sysctl -a | grep tcp_syn_retries")).waitFor();
-//        execPipe(sudoPipe("sysctl net.ipv4.tcp_syn_retries=1")).waitFor();
 
-        SocketTimeoutException exception = Assertions.assertThrows(
-                SocketTimeoutException.class, () -> new Socket().connect(serverSocket.getLocalSocketAddress(), 1_000)
-        );
+        SocketTimeoutException exception = Assertions.assertThrows(SocketTimeoutException.class, () -> getBacklogClient(server));
         log.error("ConnectException", exception);
 
-        serverSocket.accept();
-        Assertions.assertDoesNotThrow(
-                () -> new Socket().connect(serverSocket.getLocalSocketAddress(), 1_000)
-        );
-    }
+        server.accept();
+        Assertions.assertDoesNotThrow(() -> getBacklogClient(server));
 
-
-    @Test
-    @SneakyThrows
-    void setReuseAddress() {
-        ServerSocket server = new ServerSocket();
-        server.setReuseAddress(true);
-        server.bind(new InetSocketAddress(serverPort));
-        netstat("server.bind");
-
-        Socket client = getClient(server);
-        netstat("client.connect");
-        client.close();
-        netstat("client.close");
-        server.accept().close();
-        netstat("server.close");
-
-        Awaitility.await().untilAsserted(() -> {
-            netstat("reconnect");
-            Assertions.assertDoesNotThrow(() -> getClient(server));
+        Awaitility.await().until(() -> {
+            server.accept();
+            getBacklogClient(server);
+            return !process.isAlive();
         });
     }
 
     @SneakyThrows
-    private Socket getClient(ServerSocket serverSocket) {
+    private Socket getBacklogClient(ServerSocket server) {
+        Socket client = new Socket();
+        client.connect(server.getLocalSocketAddress(), 1_000);
+        return client;
+    }
+
+    /**
+     * 测试 SO_REUSEADDR 的作用。
+     *
+     * @see <a href="https://stackoverflow.com/questions/51998042/macos-so-reuseaddr-so-reuseport-not-consistent-with-linux">MacOS SO_REUSEADDR 无效</a>
+     */
+    @Test
+    @SneakyThrows
+    void setReuseAddress() {
+        ServerSocket server = new ServerSocket();
+        server.setReuseAddress(false);
+        server.bind(new InetSocketAddress(serverPort));
+        netstat("server.bind");
+
+        Socket client = getReuseAddressClient(server, false);
+        netstat("client.connected");
+        // 从客户端关闭，客户端进入 TIME_WAIT
+        client.close();
+        netstat("client.closed");
+        server.accept().close();
+        netstat("server.closed");
+        Assertions.assertThrows(BindException.class, () -> getReuseAddressClient(server, false), "Address already in use");
+        // 等到客户端 TIME_WAIT 耗尽，可以获取到连接，此连接启用 SO_REUSEADDR
+        client = awaitAvailableReuseAddressClient(server);
+        netstat("client.connected");
+
+        // 从客户端关闭，客户端进入 TIME_WAIT
+        client.close();
+        netstat("client.closed");
+        server.accept().close();
+        netstat("server.closed");
+        client = OS.MAC.isCurrentOs()
+                ? awaitAvailableReuseAddressClient(server)
+                : Assertions.assertDoesNotThrow(() -> getReuseAddressClient(server, false));
+        netstat("client.connected");
+
+        // 从服务端关闭，服务端进入 TIME_WAIT
+        server.accept().close();
+        netstat("server.closed");
+        client.close();
+        netstat("client.closed");
+        Assertions.assertThrows(SocketTimeoutException.class, () -> getReuseAddressClient(server, false), "Connect timed out");
+    }
+
+    private Socket awaitAvailableReuseAddressClient(ServerSocket server) {
+        return Awaitility.await().forever()
+                .pollInterval(1, TimeUnit.SECONDS)
+                .until(() -> getAvailableReuseAddressClient(server), Objects::nonNull);
+    }
+
+    @Nullable
+    private Socket getAvailableReuseAddressClient(ServerSocket server) {
+        try {
+            netstat("TIME_WAIT Exhausted?");
+            return getReuseAddressClient(server, true);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    @SneakyThrows
+    private Socket getReuseAddressClient(ServerSocket server, boolean reuseAddress) {
         Socket socket = new Socket();
-        socket.setReuseAddress(true);
+        socket.setReuseAddress(reuseAddress);
         socket.bind(new InetSocketAddress(InetAddress.getLocalHost(), getClientPort()));
-        socket.connect(serverSocket.getLocalSocketAddress(), 1_000);
+        socket.connect(server.getLocalSocketAddress(), 1_000);
         return socket;
     }
 
     @SneakyThrows
     private void netstat(String title) {
-        Process process = Runtime.getRuntime().exec(sh("netstat -nat | grep -E '" + serverPort + "'"));
+        Process process = Runtime.getRuntime().exec(sh("netstat -nat | grep '" + serverPort + "'"));
         Assertions.assertEquals(0, process.waitFor());
-        log.debug("{}\n{}", title, IOUtils.toString(process.getInputStream()));
+        log.info("{}\n{}", title, IOUtils.toString(process.getInputStream()));
     }
 
     private Process tcpdump(int count) {
-        return tcpdump("", count);
+        return tcpdump("tcpdump.listening:", count);
     }
 
     @SneakyThrows
@@ -248,7 +311,7 @@ class SocketTest {
         Process process = Runtime.getRuntime().exec("tcpdump -n -i " + lo + " -c " + count + " tcp and port " + serverPort);
         new Thread(Unchecked.runnable(() -> {
             Assertions.assertEquals(0, process.waitFor());
-            log.debug("{}\n{}", title, IOUtils.toString(process.getInputStream()));
+            log.info("{}\n{}", title, IOUtils.toString(process.getInputStream()));
         })).start();
         Awaitility.await().until(process::isAlive);
         return process;
