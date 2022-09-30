@@ -41,15 +41,23 @@ public class ProcessBuilderUtils {
     }
 
     /**
-     * 使用 sudo 执行命令。
+     * 使用 sudo 以管道方式执行命令（无需额外读取密码）。
      *
      * @param commands 原始命令
      * @return sudo 包装的命令
      */
     public static String[] sudoPipe(String... commands) {
-        return ObjectArrays.concat(new String[]{"echo", sudoPasswordValue(), "|", "sudo", "-S"}, commands, String.class);
+        return ObjectArrays.concat(new String[]{"echo", sudoPasswordValue(), "|"}, sudo(commands), String.class);
     }
 
+    /**
+     * 获取 sudo 密码值。
+     * 优先读取环境变量 SUDO_ASKPASS，
+     * 其次读取属性变量 SUDO_ASKPASS，
+     * 最后默认为 123456。
+     *
+     * @return sudo 密码值
+     */
     public static String sudoPasswordValue() {
         return Objects.toString(System.getenv("SUDO_ASKPASS"), System.getProperty("SUDO_ASKPASS", "123456"));
     }
@@ -69,6 +77,7 @@ public class ProcessBuilderUtils {
     }
 
     public static Process execPipe(String... commands) {
+        log.info("exec command(pipe): {}", String.join(" ", commands));
         return exec(sh(commands));
     }
 
