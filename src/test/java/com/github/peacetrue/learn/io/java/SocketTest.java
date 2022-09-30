@@ -241,8 +241,7 @@ class SocketTest {
         // sysctl net.ipv4.tcp_syn_retries
         // sysctl -w net.ipv4.tcp_syn_retries = 6
 
-        SocketTimeoutException exception = Assertions.assertThrows(SocketTimeoutException.class, () -> getBacklogClient(server));
-        log.error("ConnectException", exception);
+        Assertions.assertThrows(SocketTimeoutException.class, () -> getBacklogClient(server), "connect timed out");
 
         server.accept();
         Assertions.assertDoesNotThrow(() -> getBacklogClient(server));
@@ -257,6 +256,7 @@ class SocketTest {
     @SneakyThrows
     private Socket getBacklogClient(ServerSocket server) {
         Socket client = new Socket();
+        client.bind(new InetSocketAddress("127.0.0.1", clientPort++));
         client.connect(server.getLocalSocketAddress(), 1_000);
         return client;
     }
@@ -285,7 +285,7 @@ class SocketTest {
 
         // 之前的客户端被占用，使用一个新客户端
         clientPort++;
-        client = getReuseAddressClient(server, true);
+        client = getReuseAddressClient(server, false);
         netstat("client.connected");
         // 从客户端关闭，客户端进入 TIME_WAIT
         client.close();
@@ -294,7 +294,7 @@ class SocketTest {
         netstat("server.closed");
         client = OS.MAC.isCurrentOs()
                 ? awaitAvailableReuseAddressClient(server)
-                : Assertions.assertDoesNotThrow(() -> getReuseAddressClient(server, false));
+                : Assertions.assertDoesNotThrow(() -> getReuseAddressClient(server, true));
         netstat("client.connected");
 
         // 从服务端关闭，服务端进入 TIME_WAIT
