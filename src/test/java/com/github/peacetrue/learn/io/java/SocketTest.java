@@ -97,11 +97,11 @@ class SocketTest {
         Process process = tcpdump(20);
 
         ServerSocket server = new ServerSocket();
-        server.bind(new InetSocketAddress(InetAddress.getLoopbackAddress(), serverPort));
+        server.bind(new InetSocketAddress("127.0.0.1", serverPort));
         netstat("server.bind");
 
         Socket client = new Socket();
-        client.bind(new InetSocketAddress(InetAddress.getLoopbackAddress(), clientPort));
+        client.bind(new InetSocketAddress("127.0.0.1", clientPort));
         netstat("client.bind");
         client.connect(server.getLocalSocketAddress());
         netstat("client.connect");
@@ -234,7 +234,7 @@ class SocketTest {
         Process process = tcpdump(20);
 
         int backlog = 2, limit = OS.MAC.isCurrentOs() ? backlog : backlog + 1;
-        ServerSocket server = new ServerSocket(serverPort, backlog, InetAddress.getLoopbackAddress());
+        ServerSocket server = new ServerSocket(serverPort, backlog, InetAddress.getByName("127.0.0.1"));
         IntStream.range(0, limit).forEach(i -> Assertions.assertDoesNotThrow(() -> getBacklogClient(server)));
         netstat("clients.connected");
 
@@ -271,7 +271,7 @@ class SocketTest {
     void setReuseAddress() {
         ServerSocket server = new ServerSocket();
         server.setReuseAddress(false);
-        server.bind(new InetSocketAddress(InetAddress.getLoopbackAddress(), serverPort));
+        server.bind(new InetSocketAddress("127.0.0.1", serverPort));
         netstat("server.bind");
 
         Socket client = getReuseAddressClient(server, false);
