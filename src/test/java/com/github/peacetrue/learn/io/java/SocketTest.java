@@ -86,7 +86,7 @@ class SocketTest {
     void basic() {
         Assertions.assertNotNull(lo);
 
-        Process process = tcpdump("tcpdump.listening:", 20);
+        Process process = tcpdump(20);
 
         ServerSocket server = new ServerSocket();
         server.bind(new InetSocketAddress(InetAddress.getLoopbackAddress(), serverPort));
@@ -125,16 +125,43 @@ class SocketTest {
 
     @Test
     @SneakyThrows
+    void ipv46() {
+        ServerSocket server = new ServerSocket();
+        server.bind(new InetSocketAddress(serverPort));
+        netstat("server.bind");
+        new Socket("localhost", serverPort);
+        netstat("client.connect");
+        new Socket("::1", serverPort);
+        netstat("client.connect");
+        server.close();
+
+        server = new ServerSocket();
+        server.bind(new InetSocketAddress("localhost", serverPort));
+        netstat("server.bind");
+        new Socket("localhost", serverPort);
+        netstat("client.connect");
+        Assertions.assertThrows(ConnectException.class, () -> new Socket("::1", serverPort), "Connection refused");
+        server.close();
+
+        server = new ServerSocket();
+        server.bind(new InetSocketAddress("::1", serverPort));
+        netstat("server.bind");
+        Assertions.assertThrows(ConnectException.class, () -> new Socket("localhost", serverPort), "Connection refused");
+        new Socket("::1", serverPort);
+        netstat("client.connect");
+        server.close();
+    }
+
+    @Test
+    @SneakyThrows
     void addressAlreadyInUse() {
         // you can create a port listener using Netcat .
         // nc -l localhost 10000
         // nc -v localhost 10000
         new ServerSocket(serverPort);
-        BindException exception = Assertions.assertThrows(BindException.class, () -> new ServerSocket(serverPort), "Address already in use");
-        log.error("new ServerSocket(port)", exception);
-        exception = Assertions.assertThrows(BindException.class, () -> new ServerSocket().bind(new InetSocketAddress(serverPort)), "Address already in use");
-        log.error("new ServerSocket().bind", exception);
-        Assertions.assertEquals(0, execPipe("netstat -nat | grep -E 'tcp.*" + serverPort + "'").waitFor());
+        Assertions.assertThrows(BindException.class, () -> new ServerSocket(serverPort), "Address already in use");
+        Assertions.assertThrows(BindException.class, () -> new ServerSocket().bind(new InetSocketAddress(serverPort)), "Address already in use");
+        netstat("servers.bind");
     }
 
     @Test
@@ -193,14 +220,13 @@ class SocketTest {
                 .collect(Collectors.toList());
     }
 
-
     @Test
     @SneakyThrows
     void backlog() {
         Process process = tcpdump(20);
 
         int backlog = 2, limit = OS.MAC.isCurrentOs() ? backlog : backlog + 1;
-        ServerSocket server = new ServerSocket(serverPort, backlog);
+        ServerSocket server = new ServerSocket(serverPort, backlog, InetAddress.getLoopbackAddress());
         IntStream.range(0, limit).forEach(i -> Assertions.assertDoesNotThrow(() -> getBacklogClient(server)));
         netstat("clients.connected");
 
@@ -237,7 +263,7 @@ class SocketTest {
     void setReuseAddress() {
         ServerSocket server = new ServerSocket();
         server.setReuseAddress(false);
-        server.bind(new InetSocketAddress(serverPort));
+        server.bind(new InetSocketAddress(InetAddress.getLoopbackAddress(), serverPort));
         netstat("server.bind");
 
         Socket client = getReuseAddressClient(server, false);
@@ -297,7 +323,9 @@ class SocketTest {
 
     @SneakyThrows
     private void netstat(String title) {
-        Process process = Runtime.getRuntime().exec(sh("netstat -nat | grep '" + serverPort + "'"));
+        Process process = Runtime.getRuntime().exec(sh(
+                String.format("netstat -nat%s | grep '%s'", OS.MAC.isCurrentOs() ? "" : "p", serverPort)
+        ));
         Assertions.assertEquals(0, process.waitFor());
         log.info("{}\n{}", title, IOUtils.toString(process.getInputStream()));
     }

@@ -74,15 +74,12 @@ public class InetAddressTest {
     @Test
     @SneakyThrows
     void getByName() {
-        InetAddress localhost = InetAddress.getByName("localhost");
-        log.info("{}: {}", localhost.getClass().getName(), localhost);
-
-        UnknownHostException exception = Assertions.assertThrows(
+        InetAddress.getByName("localhost");
+        Assertions.assertThrows(
                 UnknownHostException.class,
                 () -> InetAddress.getByName("localhost1"),
                 "指定一个不存在的主机"
         );
-        log.error("UnknownHostException", exception);
     }
 
     @Test
@@ -94,22 +91,17 @@ public class InetAddressTest {
 
         // byte 范围从 -128 ~ 127，如何指定 192.168.0.1 呢？
         // https://stackoverflow.com/questions/9850199/java-network-programming-inetaddress-objects
-        //TODO 192.168.1.5 与本地环境有关，可能不存在
-        InetAddress netmask = InetAddress.getByAddress(new byte[]{(byte) 192, (byte) 168, 1, 5});
-        log.info("{}: {}", netmask.getClass().getName(), netmask);
-        Assertions.assertTrue(netmask.isReachable(1_000));
-
-        UnknownHostException exception = Assertions.assertThrows(
+        InetAddress.getByAddress(new byte[]{(byte) 192, (byte) 168, 1, 5});
+        Assertions.assertThrows(
                 UnknownHostException.class,
                 () -> InetAddress.getByAddress(new byte[]{127, 0, 0, 1, 1}),
                 "指定一个错误的长度"
         );
-        log.error("UnknownHostException", exception);
     }
 
     @Test
     void byteOverflow() {
-        IntStream.range(127, 130).forEach(i -> log.info("{}: {}", i, (byte) i));
+        IntStream.range(127, 130).forEach(i -> log.debug("{}: {}", i, (byte) i));
         // 127: 127
         // 128: -128
         // 129: -127
