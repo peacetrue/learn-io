@@ -72,7 +72,8 @@ public class ProcessBuilderUtils {
     @SneakyThrows
     public static Process exec(String... commands) {
         log.debug("exec command: {}", String.join(" ", commands));
-        ProcessBuilder processBuilder = new ProcessBuilder(commands);
+        if (commands.length == 1) commands = commands[0].split(" ");
+        ProcessBuilder processBuilder = new ProcessBuilder();
         processBuilder.command(commands);
         processBuilder.inheritIO();
         return processBuilder.start();
