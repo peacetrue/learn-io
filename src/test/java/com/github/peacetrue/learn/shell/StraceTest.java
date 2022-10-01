@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 
-import static com.github.peacetrue.test.ProcessBuilderUtils.exec;
+import static com.github.peacetrue.test.ProcessBuilderUtils.*;
 
 /**
  * strace、dtruss
@@ -19,7 +19,11 @@ public class StraceTest {
     @Test
     @SneakyThrows
     void basic() {
-        Assertions.assertEquals(0, exec("strace java --version").waitFor());
+        Assertions.assertEquals(0, strace("java").waitFor());
     }
 
+    private static Process strace(String command) {
+        if (OS.MAC.isCurrentOs()) return execPipe(sudoPipe("dtruss " + command));
+        return exec("strace " + command);
+    }
 }
