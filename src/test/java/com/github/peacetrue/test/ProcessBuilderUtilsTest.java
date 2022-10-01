@@ -49,7 +49,7 @@ class ProcessBuilderUtilsTest {
     @Order(Integer.MAX_VALUE)
     @SneakyThrows
     void execSudo() {
-        System.setProperty("SUDO_ASKPASS", SourcePathUtils.getTestResourceAbsolutePath("/pass.txt"));
+        System.setProperty("SUDO_PASS", SourcePathUtils.getTestResourceAbsolutePath("/pass.txt"));
         Assertions.assertEquals(0, ProcessBuilderUtils.execSudo("echo", "11").waitFor());
         Assertions.assertEquals(0, ProcessBuilderUtils.execSudo("tcpdump", "-c", "1").waitFor());
     }

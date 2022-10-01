@@ -28,7 +28,7 @@ public class ProcessBuilderUtils {
      */
     public static String[] sh(String... commands) {
         String command = String.join(" ", commands);
-        log.debug("sh: {}", command);
+        log.debug("sh: /bin/sh -c '{}'", command);
         return new String[]{"/bin/sh", "-c", command};
     }
 
@@ -54,14 +54,14 @@ public class ProcessBuilderUtils {
 
     /**
      * 获取 sudo 密码值。
-     * 优先读取环境变量 SUDO_ASKPASS，
-     * 其次读取属性变量 SUDO_ASKPASS，
+     * 优先读取环境变量 SUDO_PASS，
+     * 其次读取属性变量 SUDO_PASS，
      * 最后默认为 123456。
      *
      * @return sudo 密码值
      */
     public static String sudoPasswordValue() {
-        return Objects.toString(System.getenv("SUDO_ASKPASS"), System.getProperty("SUDO_ASKPASS", "123456"));
+        return Objects.toString(System.getenv("SUDO_PASS"), System.getProperty("SUDO_PASS", "123456"));
     }
 
     @SafeVarargs
@@ -71,7 +71,7 @@ public class ProcessBuilderUtils {
 
     @SneakyThrows
     public static Process exec(String... commands) {
-        log.info("exec command: {}", String.join(" ", commands));
+        log.debug("exec command: {}", String.join(" ", commands));
         ProcessBuilder processBuilder = new ProcessBuilder(commands);
         processBuilder.command(commands);
         processBuilder.inheritIO();
@@ -79,7 +79,7 @@ public class ProcessBuilderUtils {
     }
 
     public static Process execPipe(String... commands) {
-        log.info("exec command(pipe): {}", String.join(" ", commands));
+        log.debug("exec command(pipe): {}", String.join(" ", commands));
         return exec(sh(commands));
     }
 
@@ -90,7 +90,7 @@ public class ProcessBuilderUtils {
     @SneakyThrows
     public static Process execSudo(File file, String... commands) {
         commands = sudo(commands);
-        log.info("exec command(sudo): {}", Arrays.toString(commands));
+        log.debug("exec command(sudo): {}", Arrays.toString(commands));
         ProcessBuilder processBuilder = new ProcessBuilder(sudo(commands));
         processBuilder.redirectInput(file)
                 .redirectOutput(ProcessBuilder.Redirect.INHERIT)
@@ -100,6 +100,6 @@ public class ProcessBuilderUtils {
     }
 
     public static String sudoPasswordPath() {
-        return Objects.toString(System.getenv("SUDO_ASKPASS"), System.getProperty("SUDO_ASKPASS", "./ASKPASS"));
+        return Objects.toString(System.getenv("SUDO_PASS"), System.getProperty("SUDO_PASS", "./SUDO_PASS"));
     }
 }

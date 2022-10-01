@@ -1,6 +1,5 @@
 package com.github.peacetrue.learn.shell;
 
-import com.github.peacetrue.test.ProcessBuilderUtils;
 import lombok.SneakyThrows;
 import org.jooq.lambda.Unchecked;
 import org.junit.jupiter.api.Assertions;
@@ -18,29 +17,29 @@ public class TcpdumpTest {
 
     @Test
     @SneakyThrows
-    void _D() {
-        int exitValue = ProcessBuilderUtils.exec("tcpdump -D").waitFor();
+    void D() {
+        int exitValue = Runtime.getRuntime().exec("tcpdump -D").waitFor();
         Assertions.assertEquals(0, exitValue);
     }
 
     @Test
     @SneakyThrows
-    void _c() {
-        int exitValue = ProcessBuilderUtils.exec("tcpdump -c 5").waitFor();
+    void c() {
+        int exitValue = Runtime.getRuntime().exec("tcpdump -c 5").waitFor();
         Assertions.assertEquals(0, exitValue);
     }
 
     @Test
     @SneakyThrows
-    void _i() {
-        int exitValue = ProcessBuilderUtils.exec("tcpdump -i lo0 -c 5").waitFor();
+    void i() {
+        int exitValue = Runtime.getRuntime().exec("tcpdump -i lo0 -c 5").waitFor();
         Assertions.assertEquals(0, exitValue);
     }
 
     @Test
     @SneakyThrows
     void filter() {
-        int exitValue = ProcessBuilderUtils.exec("tcpdump -i lo0 -c 5 tcp").waitFor();
+        int exitValue = Runtime.getRuntime().exec("tcpdump -i lo0 -c 5 tcp").waitFor();
         Assertions.assertEquals(0, exitValue);
     }
 
@@ -48,7 +47,7 @@ public class TcpdumpTest {
     @SneakyThrows
     void filterComb() {
         Thread thread = new Thread(Unchecked.runnable(() -> {
-            int exitValue = ProcessBuilderUtils.exec("tcpdump -i lo0 -c 5 tcp and port 1000").waitFor();
+            int exitValue = Runtime.getRuntime().exec("tcpdump -i lo0 -c 5 tcp and port 1000").waitFor();
             Assertions.assertEquals(0, exitValue);
         }));
         thread.start();

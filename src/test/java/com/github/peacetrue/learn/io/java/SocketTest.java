@@ -13,15 +13,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.OS;
 
-import javax.annotation.Nullable;
-import java.io.InputStream;
 import java.net.*;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -93,8 +89,6 @@ class SocketTest {
     @Test
     @SneakyThrows
     void basic() {
-        Assertions.assertNotNull(lo);
-
         Process process = tcpdump(20);
 
         ServerSocket server = new ServerSocket();
@@ -108,22 +102,22 @@ class SocketTest {
         netstat("client.connect");
 
         String request = "----";
-        byte[] bytes = request.getBytes(StandardCharsets.UTF_8);
-        client.getOutputStream().write(bytes);
+        byte[] requestBytes = request.getBytes(StandardCharsets.UTF_8);
+        client.getOutputStream().write(requestBytes);
         netstat("client.write");
 
-        Socket acceptSocket = server.accept();
-        Assertions.assertNotEquals(-1, acceptSocket.getInputStream().read(bytes));
+        Socket acceptClient = server.accept();
+        Assertions.assertNotEquals(-1, acceptClient.getInputStream().read(requestBytes));
         netstat("server.read");
-        acceptSocket.getOutputStream().write(bytes);
+        acceptClient.getOutputStream().write(requestBytes);
         netstat("server.write");
 
-        Assertions.assertNotEquals(-1, client.getInputStream().read(bytes));
+        Assertions.assertNotEquals(-1, client.getInputStream().read(requestBytes));
         netstat("client.read");
-        Assertions.assertEquals(request, new String(bytes));
+        Assertions.assertEquals(request, new String(requestBytes));
 
-        acceptSocket.close();
-        netstat("acceptSocket.close");
+        acceptClient.close();
+        netstat("acceptClient.close");
         client.close();
 
         Awaitility.await().until(() -> {
@@ -135,27 +129,30 @@ class SocketTest {
     @Test
     @SneakyThrows
     void ipv46() {
+        // 不指定 host
         ServerSocket server = new ServerSocket();
         server.bind(new InetSocketAddress(serverPort));
         netstat("server.bind");
-        new Socket("localhost", serverPort);
+        new Socket("127.0.0.1", serverPort);
         netstat("client.connect");
         new Socket("::1", serverPort);
         netstat("client.connect");
         server.close();
 
+        // 指定 ipv4 host
         server = new ServerSocket();
-        server.bind(new InetSocketAddress("localhost", serverPort));
+        server.bind(new InetSocketAddress("127.0.0.1", serverPort));
         netstat("server.bind");
-        new Socket("localhost", serverPort);
+        new Socket("127.0.0.1", serverPort);
         netstat("client.connect");
         Assertions.assertThrows(ConnectException.class, () -> new Socket("::1", serverPort), "Connection refused");
         server.close();
 
+        // 指定 ipv6 host
         server = new ServerSocket();
         server.bind(new InetSocketAddress("::1", serverPort));
         netstat("server.bind");
-        Assertions.assertThrows(ConnectException.class, () -> new Socket("localhost", serverPort), "Connection refused");
+        Assertions.assertThrows(ConnectException.class, () -> new Socket("127.0.0.1", serverPort), "Connection refused");
         new Socket("::1", serverPort);
         netstat("client.connect");
         server.close();
@@ -175,7 +172,7 @@ class SocketTest {
 
     @Test
     void connectionRefused() {
-        ConnectException connectException = Assertions.assertThrows(ConnectException.class, () -> new Socket("localhost", serverPort));
+        ConnectException connectException = Assertions.assertThrows(ConnectException.class, () -> new Socket("127.0.0.1", serverPort));
         log.error("connectionRefused", connectException);
     }
 
@@ -188,7 +185,7 @@ class SocketTest {
         Thread thread = new Thread(Unchecked.runnable(() -> Assertions.assertEquals(0, process.waitFor())));
         thread.start();
         while (process.isAlive())
-            Assertions.assertThrows(ConnectException.class, () -> new Socket("localhost", serverPort));
+            Assertions.assertThrows(ConnectException.class, () -> new Socket("127.0.0.1", serverPort));
         thread.join();
     }
 
@@ -208,7 +205,7 @@ class SocketTest {
         server.close();
 
         // 指定 host 为 localhost，只有 127.0.0.1 能连
-        new ServerSocket().bind(new InetSocketAddress("localhost", serverPort));
+        new ServerSocket().bind(new InetSocketAddress("127.0.0.1", serverPort));
         netstat("server.bind");
         IntStream.range(0, ips.size()).forEach(i -> {
             String ip = ips.get(i);
@@ -229,18 +226,20 @@ class SocketTest {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * 测试 backlog 参数。
+     *
+     * @see <a href="https://www.cnblogs.com/orgliny/p/5780796.html">TCP backlog 参数</a>
+     */
     @Test
     @SneakyThrows
     void backlog() {
         Process process = tcpdump(20);
 
-        int backlog = 1, limit = OS.MAC.isCurrentOs() ? backlog : backlog + 1 + backlog;
+        int backlog = 1, limit = OS.MAC.isCurrentOs() ? backlog : (backlog + 1) * 2;
         ServerSocket server = new ServerSocket(serverPort, backlog, InetAddress.getByName("127.0.0.1"));
         IntStream.range(0, limit).forEach(i -> Assertions.assertDoesNotThrow(() -> getBacklogClient(server)));
         netstat("clients.connected");
-
-        // sysctl net.ipv4.tcp_syn_retries
-        // sysctl -w net.ipv4.tcp_syn_retries = 6
 
         Assertions.assertThrows(SocketTimeoutException.class, () -> getBacklogClient(server), "connect timed out");
         netstat("clients.connected");
@@ -258,7 +257,6 @@ class SocketTest {
     @SneakyThrows
     private Socket getBacklogClient(ServerSocket server) {
         Socket client = new Socket();
-//        client.bind(new InetSocketAddress("127.0.0.1", clientPort++));
         client.connect(server.getLocalSocketAddress(), 1_000);
         return client;
     }
@@ -287,16 +285,19 @@ class SocketTest {
 
         // 之前的客户端被占用，使用一个新客户端
         clientPort++;
-        client = getReuseAddressClient(server, false);
+        client = getReuseAddressClient(server, true);
         netstat("client.connected");
         // 从客户端关闭，客户端进入 TIME_WAIT
         client.close();
         netstat("client.closed");
         server.accept().close();
         netstat("server.closed");
-        client = OS.MAC.isCurrentOs()
-                ? awaitAvailableReuseAddressClient(server)
-                : Assertions.assertDoesNotThrow(() -> getReuseAddressClient(server, true));
+        if (OS.MAC.isCurrentOs()) {
+            clientPort++;
+            client = getReuseAddressClient(server, false);
+        } else {
+            client = Assertions.assertDoesNotThrow(() -> getReuseAddressClient(server, true));
+        }
         netstat("client.connected");
 
         // 从服务端关闭，服务端进入 TIME_WAIT
@@ -304,29 +305,12 @@ class SocketTest {
         netstat("server.closed");
         client.close();
         netstat("client.closed");
-        Assertions.assertThrows(SocketTimeoutException.class, () -> getReuseAddressClient(server, false), "Connect timed out");
-    }
-
-    /**
-     * 等到客户端 TIME_WAIT 耗尽，可以获取到连接。
-     *
-     * @param server 服务端
-     * @return 客户端
-     */
-    private Socket awaitAvailableReuseAddressClient(ServerSocket server) {
-        return Awaitility.await().forever()
-                .pollInterval(1, TimeUnit.SECONDS)
-                .until(() -> getAvailableReuseAddressClient(server), Objects::nonNull);
-    }
-
-    @Nullable
-    private Socket getAvailableReuseAddressClient(ServerSocket server) {
-        try {
-            netstat("TIME_WAIT Exhausted?");
-            return getReuseAddressClient(server, true);
-        } catch (Exception e) {
-            return null;
+        if (OS.MAC.isCurrentOs()) {
+            Assertions.assertThrows(SocketTimeoutException.class, () -> getReuseAddressClient(server, false), "服务端 TIME_WAIT 状态，客户端不可连接");
+        } else {
+            Assertions.assertDoesNotThrow(() -> getReuseAddressClient(server, false), "服务端 TIME_WAIT 状态，客户端仍可连接");
         }
+        netstat("client.connected");
     }
 
     @SneakyThrows
@@ -338,6 +322,47 @@ class SocketTest {
         return socket;
     }
 
+    @Test
+    @SneakyThrows
+    void tcpNoDelay() {
+        Process process = tcpdump(20);
+
+        ServerSocket server = new ServerSocket();
+        server.bind(new InetSocketAddress("127.0.0.1", serverPort));
+        netstat("server.bind");
+
+        Socket client = new Socket();
+        client.setTcpNoDelay(true);
+        client.bind(new InetSocketAddress("127.0.0.1", clientPort));
+        netstat("client.bind");
+        client.connect(server.getLocalSocketAddress());
+        netstat("client.connect");
+
+        String request = "----";
+        byte[] requestBytes = request.getBytes(StandardCharsets.UTF_8);
+        client.getOutputStream().write(requestBytes);
+        netstat("client.write");
+
+        Socket acceptClient = server.accept();
+        Assertions.assertNotEquals(-1, acceptClient.getInputStream().read(requestBytes));
+        netstat("server.read");
+        acceptClient.getOutputStream().write(requestBytes);
+        netstat("server.write");
+
+        Assertions.assertNotEquals(-1, client.getInputStream().read(requestBytes));
+        netstat("client.read");
+        Assertions.assertEquals(request, new String(requestBytes));
+
+        acceptClient.close();
+        netstat("acceptClient.close");
+        client.close();
+
+        Awaitility.await().until(() -> {
+            getBacklogClient(server);
+            return !process.isAlive();
+        });
+    }
+
     @SneakyThrows
     private void netstat(String title) {
         Process process = Runtime.getRuntime().exec(sh(
@@ -347,16 +372,12 @@ class SocketTest {
         log.info("{}\n{}", title, IOUtils.toString(process.getInputStream()));
     }
 
-    private Process tcpdump(int count) {
-        return tcpdump("tcpdump.listening", count);
-    }
-
     @SneakyThrows
-    private Process tcpdump(String title, int count) {
+    private Process tcpdump(int count) {
         Process process = Runtime.getRuntime().exec("tcpdump -nn -i " + lo + " -c " + count + " tcp and port " + serverPort);
         new Thread(Unchecked.runnable(() -> {
             Assertions.assertEquals(0, process.waitFor());
-            log.info("{}\n{}", title, IOUtils.toString(process.getInputStream()));
+            log.info("tcpdump.listening\n{}", IOUtils.toString(process.getInputStream()));
         })).start();
         Awaitility.await().until(process::isAlive);
         return process;
