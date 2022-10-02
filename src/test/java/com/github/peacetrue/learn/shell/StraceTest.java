@@ -19,7 +19,7 @@ public class StraceTest {
     @Test
     @SneakyThrows
     void basic() {
-        Assertions.assertEquals(0, strace("java").waitFor());
+        Assertions.assertEquals(0, strace("-ff - java -version").waitFor());
     }
 
     private static Process strace(String command) {

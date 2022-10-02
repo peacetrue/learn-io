@@ -1,15 +1,17 @@
 package com.github.peacetrue.java.io;
 
-import com.github.peacetrue.test.ProcessBuilderUtils;
+import com.github.peacetrue.test.ShellUtils;
+import com.github.peacetrue.test.ShellUtilsTest;
 import com.github.peacetrue.test.SourcePathUtils;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
-import java.lang.management.ManagementFactory;
-
-import static com.github.peacetrue.test.ProcessBuilderUtils.sh;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.nio.ByteBuffer;
 
 /**
  * @author peace
@@ -17,23 +19,18 @@ import static com.github.peacetrue.test.ProcessBuilderUtils.sh;
 @Slf4j
 class FileTest {
 
-
     @Test
     @SneakyThrows
-    void exec() {
-        lsof().waitFor();
+    void basic() {
+        String path = SourcePathUtils.getTestResourceAbsolutePath("/RandomAccessFile.txt");
+        File file = new File(path);
+        ShellUtilsTest.lsof();
+        try (FileInputStream fileInputStream = new FileInputStream(file)) {
+            ShellUtilsTest.lsof(RandomAccessFileTest.filter(fileInputStream.getFD()));
+        }
+        try (FileOutputStream fileOutputStream = new FileOutputStream(file)) {
+            ShellUtilsTest.lsof(RandomAccessFileTest.filter(fileOutputStream.getFD()));
+        }
     }
 
-    public static Process lsof() {
-//        return ProcessBuilderUtils.exec(sh(String.format("lsof -p %s | grep -E '  \\d{1,3}[ rwu]'", getPid())));
-        return ProcessBuilderUtils.exec(sh(String.format("lsof -p %s | grep -E '  \\d{3}[ rwu]'", getPid())));
-    }
-
-    public static int getPid() {
-        String name = ManagementFactory.getRuntimeMXBean().getName();
-        log.debug("name: {}", name);
-        int pid = Integer.parseInt(name.split("@")[0]);
-        log.debug("pid: {}", pid);
-        return pid;
-    }
 }

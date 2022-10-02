@@ -28,4 +28,6 @@ dependencies {
     implementation "com.github.peacetrue.spring:peacetrue-spring-beans"
     implementation "org.jooq:jool-java-8"
     implementation "com.fasterxml.jackson.core:jackson-databind"
+    implementation "io.github.java-diff-utils:java-diff-utils:4.12"
+
 }
