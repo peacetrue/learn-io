@@ -1,7 +1,10 @@
 package com.github.peacetrue.java.net;
 
 import com.github.peacetrue.spring.beans.BeanUtils;
+import com.github.peacetrue.test.ShellUtils;
+import com.github.peacetrue.test.ShellUtilsTest;
 import com.github.peacetrue.util.MapUtils;
+import junit.framework.AssertionFailedError;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.IOUtils;
@@ -16,7 +19,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 
+import java.io.IOException;
 import java.net.*;
+import java.nio.channels.ServerSocketChannel;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
@@ -34,9 +39,13 @@ import static com.github.peacetrue.test.ProcessBuilderUtils.*;
 @EnabledOnOs(OS.LINUX)
 class SocketTest {
 
-    /** 环回网卡名称，Mac 和 CentOS 有区别 */
+    /**
+     * 环回网卡名称，Mac 和 CentOS 有区别
+     */
     private static String lo;
-    /** 一个未被使用的随机端口，服务端会运行在此端口上 */
+    /**
+     * 一个未被使用的随机端口，服务端会运行在此端口上
+     */
     private int serverPort = 10000;
     private int clientPort;
 
@@ -97,7 +106,9 @@ class SocketTest {
         log.info("client: {}", MapUtils.prettify(BeanUtils.getPropertyValues(client)));
     }
 
-    /** 演示客户端服务端基本交互流程 */
+    /**
+     * 演示客户端服务端基本交互流程
+     */
     @Test
     @SneakyThrows
     void basic() {
@@ -201,7 +212,9 @@ class SocketTest {
         thread.join();
     }
 
-    /** 测试不指定 host 和指定 host 的区别。 */
+    /**
+     * 测试不指定 host 和指定 host 的区别。
+     */
     @Test
     @SneakyThrows
     void host() {
@@ -246,30 +259,65 @@ class SocketTest {
     @Test
     @SneakyThrows
     void backlog() {
-        Process process = tcpdump(20);
+        // 手动设置一个值
+        backlog(2);
+        // 使用默认值 50
+        backlog(new ServerSocket(++serverPort), 50);
+    }
 
-        int backlog = 1, limit = OS.MAC.isCurrentOs() ? backlog : (backlog + 1) * 2;
-        ServerSocket server = new ServerSocket(serverPort, backlog, InetAddress.getByName("127.0.0.1"));
-        IntStream.range(0, limit).forEach(i -> Assertions.assertDoesNotThrow(() -> getBacklogClient(server)));
+    @Test
+    @SneakyThrows
+    void backlogSomaxconn() {
+        // 查看操作系统相关配置
+        Process sysctl = Runtime.getRuntime().exec("sysctl net.ipv4.tcp_max_syn_backlog net.core.somaxconn");
+        ShellUtils.info("sync|accept queue", sysctl);
+
+        String acceptQueueSize = ShellUtils.output(Runtime.getRuntime().exec("sysctl -n net.core.somaxconn"));
+        if (acceptQueueSize == null) return;
+        int acceptQueueSizeInt = Integer.parseInt(StringUtils.strip(acceptQueueSize));
+        log.info("net.core.somaxconn: {}", acceptQueueSizeInt);
+        // 代码配置值等于系统配置值，正常
+        backlog(acceptQueueSizeInt);
+        // 代码配置值大于系统配置值，异常。实际取系统配置值和代码配置值中的较小值
+        serverPort++;
+        Assertions.assertThrows(Throwable.class, () -> backlog(acceptQueueSizeInt + 1));
+
+        // 更新系统配置值
+        Runtime.getRuntime().exec("sysctl -w net.core.somaxconn=" + (acceptQueueSizeInt + 1)).waitFor();
+        serverPort++;
+        backlog(acceptQueueSizeInt + 1);
+
+        // 还原系统配置值
+        Runtime.getRuntime().exec("sysctl -w net.core.somaxconn=" + acceptQueueSizeInt).waitFor();
+    }
+
+    @SneakyThrows
+    private void backlog(int backlog) {
+        backlog(new ServerSocket(serverPort, backlog), backlog);
+    }
+
+    @SneakyThrows
+    private void backlog(ServerSocket server, int backlog) {
+        // 半连接队列固定为 2，全连接队列为 backlog + 1
+        int syncQueueSize = 2, acceptQueueSize = backlog + 1;
+        // 在半连接队列和全连接队列的容量内，客户端可以建立连接
+        IntStream.range(0, syncQueueSize + acceptQueueSize).forEach(i -> Assertions.assertDoesNotThrow(() -> getBacklogClient(server)));
         netstat("clients.connected");
-
+        //超出容量无法建立连接
         Assertions.assertThrows(SocketTimeoutException.class, () -> getBacklogClient(server), "connect timed out");
-        netstat("clients.connected");
 
+        //服务端从全连接队列中取走一个连接，全连接队列释放一个空位，客户端可以建立连接
         server.accept();
+        netstat("server.accepted");
         Assertions.assertDoesNotThrow(() -> getBacklogClient(server));
-
-        Awaitility.await().until(() -> {
-            server.accept();
-            getBacklogClient(server);
-            return !process.isAlive();
-        });
+        netstat("clients.connected");
+        server.close();
     }
 
     @SneakyThrows
     private Socket getBacklogClient(ServerSocket server) {
         Socket client = new Socket();
-        client.connect(server.getLocalSocketAddress(), 1_000);
+        client.connect(server.getLocalSocketAddress(), 500);
         return client;
     }
 

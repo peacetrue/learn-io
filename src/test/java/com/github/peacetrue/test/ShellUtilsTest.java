@@ -24,8 +24,8 @@ public class ShellUtilsTest {
         Assertions.assertEquals(0, exec(sh("lsof -p $$")).waitFor());
     }
 
+//    @Test
     @SneakyThrows
-    @Test
     void lsofJava() {
         // lsof -p $$ | grep -E ' [[:digit:]]{1,3}[ rwu]'
         lsof();

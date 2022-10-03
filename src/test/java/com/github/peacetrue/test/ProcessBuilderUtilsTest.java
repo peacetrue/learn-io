@@ -47,7 +47,6 @@ class ProcessBuilderUtilsTest {
         Assertions.assertEquals(0, ProcessBuilderUtils.exec(ProcessBuilderUtils.sh(ProcessBuilderUtils.sudoPipe("echo", "1", "|", "echo"))).waitFor());
     }
 
-    @Test
     @Order(Integer.MAX_VALUE)
     @SneakyThrows
     void execSudo() {
@@ -64,6 +63,6 @@ class ProcessBuilderUtilsTest {
                 .command("echo-continue.sh")
                 .inheritIO()
                 .start();
-        process.waitFor();
+        Assertions.assertEquals(0, process.waitFor());
     }
 }

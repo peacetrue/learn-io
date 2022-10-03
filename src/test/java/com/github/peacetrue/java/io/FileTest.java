@@ -28,7 +28,7 @@ class FileTest {
         try (FileInputStream fileInputStream = new FileInputStream(file)) {
             ShellUtilsTest.lsof(RandomAccessFileTest.filter(fileInputStream.getFD()));
         }
-        try (FileOutputStream fileOutputStream = new FileOutputStream(file)) {
+        try (FileOutputStream fileOutputStream = new FileOutputStream(file, true)) {
             ShellUtilsTest.lsof(RandomAccessFileTest.filter(fileOutputStream.getFD()));
         }
     }

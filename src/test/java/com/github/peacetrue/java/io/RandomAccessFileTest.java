@@ -32,12 +32,11 @@ public class RandomAccessFileTest {
             ShellUtilsTest.lsof(filter);
 
             Assertions.assertEquals(0, file.getFilePointer());
-            byte aByte = file.readByte();
-            log.info("aByte: {}", (char) aByte);
+            log.info("char(1): {}", (char) file.readByte());
             Assertions.assertEquals(1, file.getFilePointer());
 
-            file.seek(10);
-            Assertions.assertEquals(10, file.getFilePointer());
+            file.seek(2);
+            Assertions.assertEquals(2, file.getFilePointer());
 
             ShellUtilsTest.lsof(filter);
         }
@@ -46,7 +45,7 @@ public class RandomAccessFileTest {
     public static String filter(FileDescriptor fileFD) {
         Object value = fd(fileFD);
         log.info("fd: {}", value);
-        return String.format("-o | grep '%s'", value);
+        return String.format("-o | grep '%s[ rwu]'", value);
     }
 
     @SneakyThrows

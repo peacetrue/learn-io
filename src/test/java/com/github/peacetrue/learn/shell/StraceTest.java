@@ -19,11 +19,7 @@ public class StraceTest {
     @Test
     @SneakyThrows
     void basic() {
-        Assertions.assertEquals(0, strace("-ff - java -version").waitFor());
+
     }
 
-    private static Process strace(String command) {
-        if (OS.MAC.isCurrentOs()) return execPipe(sudoPipe("dtruss " + command));
-        return exec("strace " + command);
-    }
 }

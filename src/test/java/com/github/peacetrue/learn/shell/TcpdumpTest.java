@@ -22,28 +22,24 @@ public class TcpdumpTest {
         Assertions.assertEquals(0, exitValue);
     }
 
-    @Test
     @SneakyThrows
     void c() {
         int exitValue = Runtime.getRuntime().exec("tcpdump -c 5").waitFor();
         Assertions.assertEquals(0, exitValue);
     }
 
-    @Test
     @SneakyThrows
     void i() {
         int exitValue = Runtime.getRuntime().exec("tcpdump -i lo0 -c 5").waitFor();
         Assertions.assertEquals(0, exitValue);
     }
 
-    @Test
     @SneakyThrows
     void filter() {
         int exitValue = Runtime.getRuntime().exec("tcpdump -i lo0 -c 5 tcp").waitFor();
         Assertions.assertEquals(0, exitValue);
     }
 
-    @Test
     @SneakyThrows
     void filterComb() {
         Thread thread = new Thread(Unchecked.runnable(() -> {

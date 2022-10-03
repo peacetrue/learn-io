@@ -34,7 +34,7 @@ public class ShellUtils {
     public static Process lsofJava(String... commands) {
 //        return ProcessBuilderUtils.exec(sh(String.format("lsof -p %s | grep -E '  \\d{1,3}[ rwu]'", getPid())));
 //        return ProcessBuilderUtils.exec(sh(String.format("lsof -p %s | grep -E '  \\d{3}[ rwu]'", getPid())));
-        return Runtime.getRuntime().exec(sh(String.format("lsof -p %s %s", getPid(), String.join(" ", commands))));
+        return Runtime.getRuntime().exec(sh(String.format("lsof -nP -p %s %s", getPid(), String.join(" ", commands))));
     }
 
     @SneakyThrows
@@ -42,6 +42,10 @@ public class ShellUtils {
         int exitValue = process.waitFor();
         if (exitValue != 0) throw new IllegalStateException(String.valueOf(exitValue));
         return IOUtils.toString(process.getInputStream());
+    }
+
+    public static void info(String title, Process process) {
+        log.info("{}:\n{}", title, output(process));
     }
 
 }

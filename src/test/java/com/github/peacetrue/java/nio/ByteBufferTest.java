@@ -15,8 +15,8 @@ import java.nio.file.Paths;
 @Slf4j
 public class ByteBufferTest {
 
+//    @Test
     @SneakyThrows
-    @Test
     void basic() {
         String byteBufferPath = SourcePathUtils.getTestResourceAbsolutePath("/byte-buffer");
         FileUtils.createFolderIfAbsent(Paths.get(byteBufferPath));
@@ -25,8 +25,7 @@ public class ByteBufferTest {
 
         ByteBuffer byteBuffer = ByteBuffer.allocateDirect(10);
         byteBuffer.put((byte) 1);
-        byte b = byteBuffer.get(0);
 
-        Files.write(Paths.get(byteBufferPath + "/target.txt"), ShellUtils.output(ShellUtils.lsofJava()).getBytes(StandardCharsets.UTF_8));
+//        Files.write(Paths.get(byteBufferPath + "/target.txt"), ShellUtils.output(ShellUtils.lsofJava()).getBytes(StandardCharsets.UTF_8));
     }
 }

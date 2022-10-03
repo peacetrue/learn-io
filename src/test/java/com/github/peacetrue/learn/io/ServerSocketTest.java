@@ -11,8 +11,4 @@ import java.net.ServerSocket;
  **/
 public class ServerSocketTest {
 
-    @Test
-    void name() {
-        Assertions.assertThrows(Exception.class, () -> new ServerSocket(1));
-    }
 }
