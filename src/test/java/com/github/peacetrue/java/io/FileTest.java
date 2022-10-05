@@ -1,10 +1,12 @@
 package com.github.peacetrue.java.io;
 
 import com.github.peacetrue.test.ProcessBuilderUtils;
+import com.github.peacetrue.test.SourcePathUtils;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 
+import java.io.File;
 import java.lang.management.ManagementFactory;
 
 import static com.github.peacetrue.test.ProcessBuilderUtils.sh;
@@ -19,8 +21,6 @@ class FileTest {
     @Test
     @SneakyThrows
     void exec() {
-//        String path = SourcePathUtils.getTestResourceAbsolutePath("/logback.xml");
-//        File file = new File(path);
         lsof().waitFor();
     }
 

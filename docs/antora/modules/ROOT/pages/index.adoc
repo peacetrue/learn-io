@@ -1,7 +1,7 @@
 = 简介
 :website: https://peacetrue.github.io
 :app-name: learn-io
-:foresight-repo-id:
+:foresight-repo-id: b68e98ce-4994-4587-93d1-3a47f7bdb8e7
 :imagesdir: docs/antora/modules/ROOT/assets/images
 
 image:https://img.shields.io/github/workflow/status/peacetrue/{app-name}/build/master["GitHub Workflow Status",link="https://github.com/peacetrue/{app-name}/actions"]
@@ -21,5 +21,5 @@ IO 分为磁盘 IO 和网络 IO，磁盘 IO 涉及页缓存，网络 IO 涉及 T
 . 深入学习但没有形成完整的知识体系
 . 形成了完整的知识体系但缺乏动手实践
 
-本教程侧重于实践，以实践带动理论，达到深刻理解灵活应用。
+本教程侧重于实践，以测试带动理论，达到深刻理解灵活应用。
 

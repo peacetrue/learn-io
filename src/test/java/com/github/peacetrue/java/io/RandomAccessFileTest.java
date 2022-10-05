@@ -3,30 +3,26 @@ package com.github.peacetrue.java.io;
 import com.github.peacetrue.test.SourcePathUtils;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledOnOs;
+import org.junit.jupiter.api.condition.OS;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Paths;
+import java.io.RandomAccessFile;
 
 /**
  * @author peace
  **/
 @Slf4j
+@EnabledOnOs(OS.LINUX)
 public class RandomAccessFileTest {
 
     @Test
     @SneakyThrows
-    void name() {
+    void basic() {
         String path = SourcePathUtils.getTestResourceAbsolutePath("/RandomAccessFile.txt");
-        Files.write(Paths.get(path), "1".getBytes(StandardCharsets.UTF_8));
-        FileInputStream fileInputStream = new FileInputStream(path);
-        byte[] bytes = fileInputStream.readAllBytes();
-        System.out.println(new String(bytes));
-        FileTest.lsof().waitFor();
-//        RandomAccessFile randomAccessFile = new RandomAccessFile(path, "rw");
-//        randomAccessFile.
+        Assertions.assertEquals(0, FileTest.lsof().waitFor());
+        RandomAccessFile randomAccessFile = new RandomAccessFile(path, "rw");
+        Assertions.assertEquals(0, FileTest.lsof().waitFor());
     }
 }
