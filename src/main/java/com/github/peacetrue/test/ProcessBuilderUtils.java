@@ -28,7 +28,7 @@ public class ProcessBuilderUtils {
      */
     public static String[] sh(String... commands) {
         String command = String.join(" ", commands);
-        log.debug("sh: /bin/sh -c '{}'", command);
+        log.debug("sh: /bin/sh -c \"{}\"", command);
         return new String[]{"/bin/sh", "-c", command};
     }
 
@@ -72,7 +72,6 @@ public class ProcessBuilderUtils {
     @SneakyThrows
     public static Process exec(String... commands) {
         log.debug("exec command: {}", String.join(" ", commands));
-        if (commands.length == 1) commands = commands[0].split(" ");
         ProcessBuilder processBuilder = new ProcessBuilder();
         processBuilder.command(commands);
         processBuilder.inheritIO();

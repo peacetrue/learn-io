@@ -4,6 +4,8 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.*;
 
+import java.io.File;
+
 /**
  * @author peace
  **/
@@ -54,4 +56,14 @@ class ProcessBuilderUtilsTest {
         Assertions.assertEquals(0, ProcessBuilderUtils.execSudo("tcpdump", "-c", "1").waitFor());
     }
 
+    @Test
+    @SneakyThrows
+    void echoContinue() {
+        Process process = new ProcessBuilder()
+                .directory(new File(SourcePathUtils.getTestResourceAbsolutePath("/")))
+                .command("echo-continue.sh")
+                .inheritIO()
+                .start();
+        process.waitFor();
+    }
 }

@@ -1,4 +1,4 @@
-package com.github.peacetrue.learn.io.java;
+package com.github.peacetrue.java.net;
 
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;

@@ -1,4 +1,4 @@
-package com.github.peacetrue.learn.io.java;
+package com.github.peacetrue.java.net;
 
 import com.github.peacetrue.spring.beans.BeanUtils;
 import com.github.peacetrue.util.MapUtils;
