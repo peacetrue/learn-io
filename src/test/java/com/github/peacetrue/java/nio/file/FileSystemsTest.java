@@ -16,6 +16,6 @@ public class FileSystemsTest {
     @Test
     void properties() {
         FileSystem fileSystem = FileSystems.getDefault();
-        log.info("properties:{}", fileSystem.provider());
+        log.info("fileSystem: {}", fileSystem);
     }
 }

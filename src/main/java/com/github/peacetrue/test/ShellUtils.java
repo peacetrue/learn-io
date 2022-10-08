@@ -2,10 +2,10 @@ package com.github.peacetrue.test;
 
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.io.IOUtils;
 
 import java.lang.management.ManagementFactory;
 
-import static com.github.peacetrue.test.ProcessBuilderUtils.exec;
 import static com.github.peacetrue.test.ProcessBuilderUtils.sh;
 
 /**
@@ -35,6 +35,13 @@ public class ShellUtils {
 //        return ProcessBuilderUtils.exec(sh(String.format("lsof -p %s | grep -E '  \\d{1,3}[ rwu]'", getPid())));
 //        return ProcessBuilderUtils.exec(sh(String.format("lsof -p %s | grep -E '  \\d{3}[ rwu]'", getPid())));
         return Runtime.getRuntime().exec(sh(String.format("lsof -p %s %s", getPid(), String.join(" ", commands))));
+    }
+
+    @SneakyThrows
+    public static String output(Process process) {
+        int exitValue = process.waitFor();
+        if (exitValue != 0) throw new IllegalStateException(String.valueOf(exitValue));
+        return IOUtils.toString(process.getInputStream());
     }
 
 }
