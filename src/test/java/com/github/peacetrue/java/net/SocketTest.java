@@ -1,5 +1,7 @@
 package com.github.peacetrue.java.net;
 
+import com.github.peacetrue.spring.beans.BeanUtils;
+import com.github.peacetrue.util.MapUtils;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.IOUtils;
@@ -11,6 +13,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 
 import java.net.*;
@@ -28,6 +31,7 @@ import static com.github.peacetrue.test.ProcessBuilderUtils.*;
  * @author peace
  **/
 @Slf4j
+@EnabledOnOs(OS.LINUX)
 class SocketTest {
 
     /** 环回网卡名称，Mac 和 CentOS 有区别 */
@@ -84,6 +88,14 @@ class SocketTest {
         log.debug("port: {}", serverPort);
     }
 
+    @Test
+    @SneakyThrows
+    void defaultProperties() {
+        ServerSocket server = new ServerSocket(serverPort);
+        log.info("server: {}", MapUtils.prettify(BeanUtils.getPropertyValues(server)));
+        Socket client = new Socket("127.0.0.1", serverPort);
+        log.info("client: {}", MapUtils.prettify(BeanUtils.getPropertyValues(client)));
+    }
 
     /** 演示客户端服务端基本交互流程 */
     @Test
