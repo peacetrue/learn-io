@@ -5,6 +5,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.*;
 
 import java.io.File;
+import java.util.function.UnaryOperator;
+import java.util.stream.Stream;
 
 /**
  * @author peace
@@ -35,9 +37,15 @@ class ProcessBuilderUtilsTest {
     @Test
     void concat() {
         String command = "ls";
-        String[] commands = ProcessBuilderUtils.<String[]>concat(ProcessBuilderUtils::sh, ProcessBuilderUtils::sudoPipe).apply(new String[]{command});
+        String[] commands = ProcessBuilderUtilsTest.<String[]>concat(ProcessBuilderUtils::sh, ProcessBuilderUtils::sudoPipe).apply(new String[]{command});
         Assertions.assertArrayEquals(new String[]{"/bin/sh", "-c", "echo 123456 | sudo -S " + command}, commands);
     }
+
+    @SafeVarargs
+    public static <T> UnaryOperator<T> concat(UnaryOperator<T>... operators) {
+        return Stream.of(operators).reduce(UnaryOperator.identity(), (left, right) -> v -> left.apply(right.apply(v)));
+    }
+
 
     @Test
     @SneakyThrows
@@ -45,14 +53,6 @@ class ProcessBuilderUtilsTest {
         Assertions.assertEquals(0, ProcessBuilderUtils.exec("echo", "1").waitFor());
         Assertions.assertEquals(0, ProcessBuilderUtils.exec(ProcessBuilderUtils.sh("echo", "1", "|", "echo")).waitFor());
         Assertions.assertEquals(0, ProcessBuilderUtils.exec(ProcessBuilderUtils.sh(ProcessBuilderUtils.sudoPipe("echo", "1", "|", "echo"))).waitFor());
-    }
-
-    @Order(Integer.MAX_VALUE)
-    @SneakyThrows
-    void execSudo() {
-        System.setProperty("SUDO_PASS", SourcePathUtils.getTestResourceAbsolutePath("/pass.txt"));
-        Assertions.assertEquals(0, ProcessBuilderUtils.execSudo("echo", "11").waitFor());
-        Assertions.assertEquals(0, ProcessBuilderUtils.execSudo("tcpdump", "-c", "1").waitFor());
     }
 
     @Test

@@ -17,7 +17,6 @@ import static com.github.peacetrue.test.ProcessBuilderUtils.*;
 public class StraceTest {
 
     @Test
-    @SneakyThrows
     void basic() {
 
     }

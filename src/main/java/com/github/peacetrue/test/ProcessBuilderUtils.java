@@ -7,10 +7,10 @@ import lombok.extern.slf4j.Slf4j;
 import java.io.File;
 import java.util.Arrays;
 import java.util.Objects;
-import java.util.function.UnaryOperator;
-import java.util.stream.Stream;
 
 /**
+ * ProcessBuilder 工具类。
+ *
  * @author peace
  * @see <a href="https://stackoverflow.com/questions/3776195/using-java-processbuilder-to-execute-a-piped-command">ProcessBuilder 如何支持管道命令</a>
  **/
@@ -64,11 +64,12 @@ public class ProcessBuilderUtils {
         return Objects.toString(System.getenv("SUDO_PASS"), System.getProperty("SUDO_PASS", "123456"));
     }
 
-    @SafeVarargs
-    public static <T> UnaryOperator<T> concat(UnaryOperator<T>... operators) {
-        return Stream.of(operators).reduce(UnaryOperator.identity(), (left, right) -> v -> left.apply(right.apply(v)));
-    }
-
+    /**
+     * 执行不可含管道的命令。
+     *
+     * @param commands 命令（不可含管道）
+     * @return 进程
+     */
     @SneakyThrows
     public static Process exec(String... commands) {
         log.debug("exec command: {}", String.join(" ", commands));
@@ -78,15 +79,43 @@ public class ProcessBuilderUtils {
         return processBuilder.start();
     }
 
+    /**
+     * 执行可含管道的命令。
+     *
+     * @param commands 命令（可含管道）
+     * @return 进程
+     */
     public static Process execPipe(String... commands) {
         log.debug("exec command(pipe): {}", String.join(" ", commands));
         return exec(sh(commands));
     }
 
+    /**
+     * 执行 sudo 命令。
+     *
+     * @param commands 命令
+     * @return 进程
+     */
     public static Process execSudo(String... commands) {
         return execSudo(new File(sudoPasswordPath()), commands);
     }
 
+    /**
+     * 获取 sudo 密码文件路径。
+     *
+     * @return sudo 密码文件路径
+     */
+    public static String sudoPasswordPath() {
+        return Objects.toString(System.getenv("SUDO_PASS"), System.getProperty("SUDO_PASS", "SUDO_PASS"));
+    }
+
+    /**
+     * 执行 sudo 命令。
+     *
+     * @param file     存储 sudo 密码的文件
+     * @param commands 命令
+     * @return 进程
+     */
     @SneakyThrows
     public static Process execSudo(File file, String... commands) {
         commands = sudo(commands);
@@ -97,9 +126,5 @@ public class ProcessBuilderUtils {
                 .redirectError(ProcessBuilder.Redirect.INHERIT)
         ;
         return processBuilder.start();
-    }
-
-    public static String sudoPasswordPath() {
-        return Objects.toString(System.getenv("SUDO_PASS"), System.getProperty("SUDO_PASS", "./SUDO_PASS"));
     }
 }
